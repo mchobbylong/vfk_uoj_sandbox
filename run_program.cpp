@@ -201,7 +201,7 @@ void parse_args(int argc, char **argv) {
 	run_program_config.time_limit = 1000;
 	run_program_config.real_time_limit = -1;
 	run_program_config.memory_limit = 262144;
-	run_program_config.output_limit = 32768;
+	run_program_config.output_limit = 65536;
 	run_program_config.stack_limit = 8192;
 	run_program_config.input_file_name = "stdin";
 	run_program_config.output_file_name = "stdout";
@@ -296,7 +296,7 @@ void run_child() {
 				exit(14);
 			}
 		}
-		
+
 		if (run_program_config.output_file_name == "stderr") {
 			if (dup2(2, 1) == -1) {
 				exit(15);
@@ -410,7 +410,7 @@ RunResult trace_children() {
 		int stat = 0;
 		int sig = 0;
 		struct rusage ruse;
-		
+
 		pid_t pid = wait4(-1, &stat, __WALL, &ruse);
 		if (run_program_config.need_show_trace_details) {
 			if (prev_pid != pid) {
@@ -425,7 +425,7 @@ RunResult trace_children() {
 			}
 			continue;
 		}
-		
+
 		int p = rp_children_pos(pid);
 		if (p == -1) {
 			if (run_program_config.need_show_trace_details) {
@@ -509,10 +509,10 @@ RunResult trace_children() {
 				continue;
 			}
 		}
-		
+
 		if (WIFSTOPPED(stat)) {
 			sig = WSTOPSIG(stat);
-			
+
 			if (rp_children[p].mode == -1) {
 				if ((p == 0 && sig == SIGTRAP) || (p != 0 && sig == SIGSTOP)) {
 					if (p == 0) {
@@ -544,7 +544,7 @@ RunResult trace_children() {
 					}
 					rp_children[p].mode = 0;
 				}
-				
+
 				sig = 0;
 			} else if (sig == SIGTRAP) {
 				switch ((stat >> 16) & 0xffff) {
@@ -570,7 +570,7 @@ RunResult trace_children() {
 					fprintf(stderr, "sig      : %d\n", sig);
 				}
 			}
-			
+
 			switch(sig) {
 			case SIGXCPU:
 				stop_all();
@@ -580,14 +580,14 @@ RunResult trace_children() {
 				return RunResult(RS_OLE);
 			}
 		}
-		
+
 		ptrace(PTRACE_SYSCALL, pid, NULL, sig);
 	}
 }
 
 RunResult run_parent(pid_t pid) {
 	init_conf(run_program_config);
-	
+
 	n_rp_children = 0;
 
 	rp_children_add(pid);
