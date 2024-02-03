@@ -62,7 +62,7 @@ string abspath(pid_t pid, const string &path) {
 	}
 	if (path.empty()) {
 		return path;
-	} 
+	}
 	string s;
 	string b;
 	size_t st;
@@ -219,7 +219,7 @@ int syscall_max_cnt_list_default[][2] = {
 	{__NR_msync         , -1},
 	{__NR_mincore       , -1},
 	{__NR_madvise       , -1},
-	
+
 	{__NR_rt_sigaction  , -1},
 	{__NR_rt_sigprocmask, -1},
 	{__NR_rt_sigreturn  , -1},
@@ -263,6 +263,7 @@ const char *readable_file_name_list_default[] = {
 	"/dev/urandom",
 	"/proc/meminfo",
 	"/etc/localtime",
+	"/opt/gcc_lib64/", // for programs compiled by external gcc compiler
 	NULL
 };
 
