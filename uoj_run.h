@@ -10,10 +10,10 @@
 #include <stdexcept>
 #include <sys/time.h>
 
-#define UOJ_GCC "/usr/bin/gcc-10"
-#define UOJ_GPLUSPLUS "/usr/bin/g++-10"
+#define UOJ_GCC "/usr/bin/gcc-11"
+#define UOJ_GPLUSPLUS "/usr/bin/g++-11"
 #define UOJ_PYTHON2_7 "/usr/bin/python2.7"
-#define UOJ_PYTHON3 "/usr/bin/python3.9"
+#define UOJ_PYTHON3 "/usr/bin/python3.10"
 #define UOJ_FPC "/usr/bin/fpc"
 #define UOJ_JDK8 "jdk1.8.0_202"
 #define UOJ_OPEN_JDK11 "/usr/lib/jvm/java-11-openjdk-amd64"
@@ -305,6 +305,7 @@ namespace runp {
 		bool unsafe = false;
 		bool allow_proc = false;
 		bool need_show_trace_details = false;
+		bool use_rss = false;
 
 		config(std::string program_name = "", const std::vector<std::string> &rest_args = {})
 			: program_name(program_name), rest_args(rest_args) {
@@ -345,6 +346,9 @@ namespace runp {
 			}
 			if (this->allow_proc) {
 				add_runp_arg(sout, "--allow-proc");
+			}
+			if (this->use_rss) {
+				add_runp_arg(sout, "--use-rss");
 			}
 
 			if (!this->work_path.empty()) {
@@ -403,76 +407,28 @@ namespace runp {
 	};
 
 	/**
-	 * @brief convert a time t to timeval. Assume t <= 1000. Accurate to ms.
+	 * @brief convert a time t to timeval. Assume t <= 1000. Accurate to us.
 	 *
-	 * @param t time in double
+	 * @param t time (in milliseconds) in double
 	 * @return timeval
 	 */
 	timeval double_to_timeval(const double &t) {
 		long tl = round(t * 1000);
-		long tl_sec = tl / 1000;
-		long tl_usec = tl % 1000 * 1000;
+		long tl_sec = tl / 1'000'000;
+		long tl_usec = tl % 1'000'000;
 		return {tl_sec, tl_usec};
 	}
 
 	/**
-	 * @brief convert a time t to timespec. Assume t <= 1000. Accurate to ms.
+	 * @brief convert a time t to timespec. Assume t <= 1000. Accurate to us.
 	 *
-	 * @param t time in double
+	 * @param t time (in milliseconds) in double
 	 * @return timespec
 	 */
 	timespec double_to_timespec(const double &t) {
 		long tl = round(t * 1000);
-		long tl_sec = tl / 1000;
-		long tl_nsec = tl % 1000 * 1'000'000;
+		long tl_sec = tl / 1'000'000;
+		long tl_nsec = tl % 1'000'000 * 1000;
 		return {tl_sec, tl_nsec};
-	}
-}
-
-namespace runp::interaction {
-	struct pipe_config {
-		int from, from_fd;
-		int to, to_fd;
-		std::string saving_file_name;
-
-		pipe_config() = default;
-		pipe_config(int _from, int _from_fd, int _to, int _to_fd, const std::string &_saving_file_name = "")
-				: from(_from), from_fd(_from_fd), to(_to), to_fd(_to_fd), saving_file_name(_saving_file_name) {}
-		pipe_config(const std::string &str) {
-			if (sscanf(str.c_str(), "%d:%d-%d:%d", &from, &from_fd, &to, &to_fd) != 4) {
-				throw std::invalid_argument("bad init str for pipe");
-			}
-		}
-	};
-
-	struct config {
-		std::vector<std::string> cmds;
-		std::vector<pipe_config> pipes;
-
-		std::string get_cmd() const {
-			std::ostringstream sout;
-			sout << escapeshellarg(run_path / "run_interaction");
-			for (auto &cmd : cmds) {
-				sout << " " << escapeshellarg(cmd);
-			}
-			for (auto &pipe : pipes) {
-				sout << " " << "-p";
-				sout << " " << pipe.from << ":" << pipe.from_fd;
-				sout << "-" << pipe.to << ":" << pipe.to_fd;
-
-				if (!pipe.saving_file_name.empty()) {
-					sout << " " << "-s";
-					sout << " " << escapeshellarg(pipe.saving_file_name);
-				}
-			}
-			return sout.str();
-		}
-	};
-
-	/*
-	 * @return interaction return value
-	 **/
-	int run(const config &ric) {
-		return execute(ric.get_cmd().c_str());
 	}
 }

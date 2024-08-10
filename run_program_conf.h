@@ -93,6 +93,9 @@ std::map<std::string, std::vector<std::pair<int, syscall_info>>> allowed_syscall
 		{__NR_restart_syscall, syscall_info::unlimited()},
 
         // for startup
+		{__NR_set_tid_address, syscall_info::count_based(1)},
+		{__NR_rseq           , syscall_info::count_based(1)},
+		{__NR_futex          , syscall_info::count_based(1)},
 		{__NR_setitimer      , syscall_info::count_based(1)},
 		{__NR_execve         , syscall_info::count_based(1)},
 		{__NR_set_robust_list, syscall_info::unlimited()   },
@@ -146,7 +149,7 @@ std::map<std::string, std::vector<std::pair<int, syscall_info>>> allowed_syscall
 		{__NR_nanosleep      , syscall_info::unlimited()},
 		{__NR_clock_nanosleep, syscall_info::unlimited()},
 		{__NR_wait4          , syscall_info::unlimited()},
-		
+
 		{__NR_execve         , syscall_info::with_extra_check(ECT_FILE_OP | ECT_FILE_R)},
 	}},
 
@@ -302,7 +305,7 @@ std::map<std::string, std::vector<std::string>> soft_ban_file_name_list = {
 
 std::map<std::string, std::vector<std::string>> statable_file_name_list = {
 	{"default", {}},
-	
+
 	{"python2.7", {
 		"/usr",
 		"/usr/bin",
@@ -352,6 +355,7 @@ std::map<std::string, std::vector<std::string>> readable_file_name_list = {
 		"/dev/urandom",
 		"/sys/devices/system/cpu/", // for java & some python libraries
 		"/proc/sys/vm/", // for java
+		"/opt/gcc-12.3.0/", // for programs compiled by custom gcc compiler
 	}},
 
 	{"python2.7", {
@@ -408,10 +412,11 @@ std::map<std::string, std::vector<std::string>> readable_file_name_list = {
 		"/proc/",
 		"/etc/timezone",
 		"/etc/python2.7/",
-		"/etc/python3.9/",
-		"/etc/fpc-3.0.4.cfg",
+		"/etc/python3.10/",
+		"/etc/fpc-3.2.2.cfg",
 		"/etc/java-11-openjdk/",
 		"/etc/java-17-openjdk/",
+		"/opt/gcc-12.3.0/", // for custom gcc compiler
 	}}
 };
 

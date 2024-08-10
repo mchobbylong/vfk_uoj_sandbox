@@ -26,24 +26,25 @@ struct run_event {
 };
 
 argp_option run_program_argp_options[] = {
-	{"tl"                 , 'T', "TIME_LIMIT"  , 0, "Set time limit (in second)"                            ,  1},
-	{"rtl"                , 'R', "TIME_LIMIT"  , 0, "Set real time limit (in second)"                       ,  2},
-	{"ml"                 , 'M', "MEMORY_LIMIT", 0, "Set memory limit (in mb)"                              ,  3},
-	{"ol"                 , 'O', "OUTPUT_LIMIT", 0, "Set output limit (in mb)"                              ,  4},
-	{"sl"                 , 'S', "STACK_LIMIT" , 0, "Set stack limit (in mb)"                               ,  5},
-	{"in"                 , 'i', "IN"          , 0, "Set input file name"                                   ,  6},
-	{"out"                , 'o', "OUT"         , 0, "Set output file name"                                  ,  7},
-	{"err"                , 'e', "ERR"         , 0, "Set error file name"                                   ,  8},
-	{"work-path"          , 'w', "WORK_PATH"   , 0, "Set the work path of the program"                      ,  9},
-	{"type"               , 't', "TYPE"        , 0, "Set the program type (for some program such as python)", 10},
-	{"res"                , 'r', "RESULT_FILE" , 0, "Set the file name for outputing the result            ", 10},
-	{"add-readable"       , 500, "FILE"        , 0, "Add a readable file"                                   , 11},
-	{"add-writable"       , 505, "FILE"        , 0, "Add a writable file"                                   , 11},
-	{"unsafe"             , 501, 0             , 0, "Don't check dangerous syscalls"                        , 12},
-	{"show-trace-details" , 502, 0             , 0, "Show trace details"                                    , 13},
-	{"allow-proc"         , 503, 0             , 0, "Allow fork, exec... etc."                              , 14},
-	{"add-readable-raw"   , 504, "FILE"        , 0, "Add a readable (don't transform to its real path)"     , 15},
-	{"add-writable-raw"   , 506, "FILE"        , 0, "Add a writable (don't transform to its real path)"     , 15},
+	{"tl"                 , 'T', "TIME_LIMIT"  , 0, "Set time limit (in millisecond)"                                      ,  1},
+	{"rtl"                , 'R', "TIME_LIMIT"  , 0, "Set real time limit (in millisecond)"                                 ,  2},
+	{"ml"                 , 'M', "MEMORY_LIMIT", 0, "Set memory limit (in KB)"                                             ,  3},
+	{"ol"                 , 'O', "OUTPUT_LIMIT", 0, "Set output limit (in KB)"                                             ,  4},
+	{"sl"                 , 'S', "STACK_LIMIT" , 0, "Set stack limit (in KB)"                                              ,  5},
+	{"in"                 , 'i', "IN"          , 0, "Set input file name"                                                  ,  6},
+	{"out"                , 'o', "OUT"         , 0, "Set output file name"                                                 ,  7},
+	{"err"                , 'e', "ERR"         , 0, "Set error file name"                                                  ,  8},
+	{"work-path"          , 'w', "WORK_PATH"   , 0, "Set the work path of the program"                                     ,  9},
+	{"type"               , 't', "TYPE"        , 0, "Set the program type (for some program such as python)"               , 10},
+	{"res"                , 'r', "RESULT_FILE" , 0, "Set the file name for outputing the result"                           , 10},
+	{"add-readable"       , 500, "FILE"        , 0, "Add a readable file"                                                  , 11},
+	{"add-writable"       , 505, "FILE"        , 0, "Add a writable file"                                                  , 11},
+	{"unsafe"             , 501, 0             , 0, "Don't check dangerous syscalls"                                       , 12},
+	{"show-trace-details" , 502, 0             , 0, "Show trace details"                                                   , 13},
+	{"allow-proc"         , 503, 0             , 0, "Allow fork, exec... etc."                                             , 14},
+	{"add-readable-raw"   , 504, "FILE"        , 0, "Add a readable (don't transform to its real path)"                    , 15},
+	{"add-writable-raw"   , 506, "FILE"        , 0, "Add a writable (don't transform to its real path)"                    , 15},
+	{"use-rss"            , 507, 0             , 0, "Use Resident Set Size as memory usage (Use Allocated Size as default)", 16},
 	{0}
 };
 error_t run_program_argp_parse_opt (int key, char *arg, struct argp_state *state) {
@@ -104,6 +105,8 @@ error_t run_program_argp_parse_opt (int key, char *arg, struct argp_state *state
 		case 506:
 			config->writable_file_names.push_back(arg);
 			break;
+		case 507:
+			config->use_rss = true;
 		case ARGP_KEY_ARG:
 			config->program_name = arg;
 			for (int i = state->next; i < state->argc; i++) {
@@ -132,27 +135,28 @@ argp run_program_argp = {
 };
 
 void parse_args(int argc, char **argv) {
-	run_program_config.limits.time = 1;
+	run_program_config.limits.time = 1000; // 1s
 	run_program_config.limits.real_time = -1;
-	run_program_config.limits.memory = 256;
-	run_program_config.limits.output = 64;
-	run_program_config.limits.stack = 1024;
+	run_program_config.limits.memory = 256 << 10; // 256MB
+	run_program_config.limits.output = 64 << 10;  // 64MB
+	run_program_config.limits.stack = 1024 << 10; // 1024MB
 	run_program_config.input_file_name = "stdin";
 	run_program_config.output_file_name = "stdout";
-	run_program_config.error_file_name = "stderr";
+	run_program_config.error_file_name = "/dev/null"; // dump away error logs by default
 	run_program_config.work_path = "";
 	run_program_config.result_file_name = "stdout";
 	run_program_config.type = "default";
 	run_program_config.unsafe = false;
 	run_program_config.need_show_trace_details = false;
 	run_program_config.allow_proc = false;
+	run_program_config.use_rss = false;
 
 	argp_parse(&run_program_argp, argc, argv, ARGP_NO_ARGS | ARGP_IN_ORDER, 0, &run_program_config);
 
 	runp::result::result_file_name = run_program_config.result_file_name;
 
 	if (run_program_config.limits.real_time == -1) {
-		run_program_config.limits.real_time = run_program_config.limits.time + 2;
+		run_program_config.limits.real_time = run_program_config.limits.time + 2000;
 	}
 	run_program_config.limits.stack = min(run_program_config.limits.stack, run_program_config.limits.memory);
 
@@ -218,8 +222,8 @@ void set_user_cpu_time_limit(double tl) {
 [[noreturn]] void run_child() {
 	setpgid(0, 0);
 
-	set_limit(RLIMIT_FSIZE, run_program_config.limits.output << 20);
-	set_limit(RLIMIT_STACK, run_program_config.limits.stack << 20);
+	set_limit(RLIMIT_FSIZE, run_program_config.limits.output << 10);
+	set_limit(RLIMIT_STACK, run_program_config.limits.stack << 10);
 	// TODO: use https://man7.org/linux/man-pages/man3/vlimit.3.html to limit virtual memory
 
 	if (run_program_config.input_file_name != "stdin") {
@@ -242,7 +246,7 @@ void set_user_cpu_time_limit(double tl) {
 				exit(14);
 			}
 		}
-		
+
 		if (run_program_config.output_file_name == "stderr") {
 			if (dup2(2, 1) == -1) {
 				exit(15);
@@ -311,7 +315,7 @@ struct rusage *ruse0p = NULL;
 bool has_real_TLE() {
 	struct timeval elapsed;
 	timersub(&end_time, &start_time, &elapsed);
-	return elapsed.tv_sec + elapsed.tv_usec / 1'000'000. >= run_program_config.limits.real_time;
+	return elapsed.tv_sec * 1000 + elapsed.tv_usec / 1000. >= run_program_config.limits.real_time;
 }
 
 int rp_children_pos(pid_t pid) {
@@ -351,7 +355,7 @@ string get_usage_summary(struct rusage *rusep) {
 	sout << rusep->ru_utime.tv_sec * 1000 + rusep->ru_utime.tv_usec / 1000 << "ms / ";
 	sout << total_cpu.tv_sec * 1000 + total_cpu.tv_usec / 1000 << "ms / ";
 	sout << elapsed.tv_sec * 1000 + elapsed.tv_usec / 1000 << "ms." << endl;
-	sout << "max RSS: " << rusep->ru_maxrss << "kb." << endl;
+	sout << "max RSS: " << rusep->ru_maxrss << "KB." << endl;
 	sout << "total number of threads: " << total_rp_children + 1 << "." << endl;
 	sout << "voluntary / total context switches: " << rusep->ru_nvcsw << " / " << rusep->ru_nvcsw + rusep->ru_nivcsw << ".";
 
@@ -417,7 +421,7 @@ run_event next_event() {
 	run_event e;
 
 	int stat = 0;
-	
+
 	e.pid = wait4(-1, &stat, __WALL, &ruse);
 	const int wait_errno = errno;
 	gettimeofday(&end_time, NULL);
@@ -447,7 +451,7 @@ run_event next_event() {
 		e.type = ET_REAL_TLE;
 		return e;
 	}
-	
+
 	int p = rp_children_pos(e.pid);
 	if (p == -1) {
 		if (run_program_config.need_show_trace_details) {
@@ -462,12 +466,25 @@ run_event next_event() {
 
 	if (p >= 1) {
 		e.usertim = ruse.ru_utime.tv_sec * 1000 + ruse.ru_utime.tv_usec / 1000;
-		e.usermem = ruse.ru_maxrss;
-		if (e.usertim > run_program_config.limits.time * 1000) {
+		if (run_program_config.use_rss)
+			e.usermem = ruse.ru_maxrss;
+		else {
+			e.usermem = 0;
+			ifstream fin("/proc/" + to_string(e.pid) + "/statm");
+			if (fin.is_open()) {
+				int size, resident, shared, trs, lrs, drs, dt;
+				fin >> size >> resident >> shared >> trs >> lrs >> drs >> dt;
+				if (fin.good())
+					e.usermem = drs * 4; // 1 page = 4KB
+				fin.close();
+			}
+		}
+
+		if (e.usertim > run_program_config.limits.time) {
 			e.type = ET_USER_CPU_TLE;
 			return e;
 		}
-		if (e.usermem > run_program_config.limits.memory * 1024) {
+		if (e.usermem > run_program_config.limits.memory) {
 			e.type = ET_MLE;
 			return e;
 		}
@@ -494,7 +511,7 @@ run_event next_event() {
 	if (!WIFSTOPPED(stat)) {
 		stop_all(runp::result(runp::RS_JGF, "error code: NSTOP")); // expected WIFSTOPPED, but it is not
 	}
-	
+
 	e.sig = WSTOPSIG(stat);
 	e.pevent = (unsigned)stat >> 16;
 
@@ -515,7 +532,7 @@ run_event next_event() {
 		}
         e.cp->flags &= ~CPF_STARTUP;
 	}
-	
+
 	switch (e.sig) {
 	case SIGTRAP:
 		switch (e.pevent) {
@@ -561,17 +578,21 @@ run_event next_event() {
 void dispatch_event(run_event&& e) {
 	auto restart_op = PTRACE_CONT;
 
+	// since reading allocated memory size from statm may fail, let's trace the maximum memory usage here
+	static int maxmem = 0;
+	maxmem = max(maxmem, e.usermem);
+
 	switch (e.type) {
 	case ET_SKIP:
 		return;
 	case ET_REAL_TLE:
-		stop_all(runp::result(runp::RS_TLE, "elapsed real time limit exceeded: >" + to_string(run_program_config.limits.real_time) + "s"));
+		stop_all(runp::result(runp::RS_TLE, "elapsed real time limit exceeded: >" + to_string(run_program_config.limits.real_time) + "ms"));
 	case ET_USER_CPU_TLE:
-		stop_all(runp::result(runp::RS_TLE, "user CPU time limit exceeded: >" + to_string(run_program_config.limits.time) + "s"));
+		stop_all(runp::result(runp::RS_TLE, "user CPU time limit exceeded: >" + to_string(run_program_config.limits.time) + "ms"));
 	case ET_MLE:
-		stop_all(runp::result(runp::RS_MLE, "max RSS >" + to_string(run_program_config.limits.memory) + "MB"));
+		stop_all(runp::result(runp::RS_MLE, "max memory usage >" + to_string(run_program_config.limits.memory) + "KB"));
 	case ET_OLE:
-		stop_all(runp::result(runp::RS_OLE, "output limit exceeded: >" + to_string(run_program_config.limits.output) + "MB"));
+		stop_all(runp::result(runp::RS_OLE, "output limit exceeded: >" + to_string(run_program_config.limits.output) + "KB"));
 	case ET_EXIT:
 		if (run_program_config.need_show_trace_details) {
 			fprintf(stderr, "exit     : %d\n", e.exitcode);
@@ -582,7 +603,7 @@ void dispatch_event(run_event&& e) {
 			stop_all(runp::result(runp::RS_JGF, "error code: CPCMDER2")); // rp_children mode error
 		} else {
 			if (e.cp == rp_children.data() + 1) {
-                stop_all(runp::result(runp::RS_AC, "exit with code " + to_string(e.exitcode), e.usertim, e.usermem, e.exitcode));
+                stop_all(runp::result(runp::RS_AC, "exit with code " + to_string(e.exitcode), e.usertim, maxmem, e.exitcode));
 			} else {
 				rp_children_del(e.pid);
 			}

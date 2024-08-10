@@ -47,7 +47,7 @@ struct syscall_info {
 		: extra_check(ECT_CNT), max_cnt(0) {}
     syscall_info(unsigned extra_check, int max_cnt)
         : extra_check((EX_CHECK_TYPE)extra_check), max_cnt(max_cnt) {}
-    
+
     static syscall_info unlimited() {
         return syscall_info(ECT_NONE, -1);
     }
@@ -91,6 +91,7 @@ typedef unsigned long long int reg_val_t;
 #define REG_ARG1 rsi
 #define REG_ARG2 rdx
 #define REG_ARG3 rcx
+#define REG_ARG3_KERNEL r10
 
 enum CHILD_PROC_FLAG : unsigned {
 	CPF_STARTUP = 1u << 0,
@@ -204,12 +205,12 @@ string getcwd() {
 string getcwdp(pid_t pid) {
 	return realpath("/proc/" + (pid == 0 ? "self" : to_string(pid)) + "/cwd");
 }
-string abspath(const string &path, pid_t pid, int fd = AT_FDCWD) {
+string abspath(const string &path, pid_t pid, int fd = AT_FDCWD, bool ignore_empty_path = false) {
 	static int depth = 0;
 	if (depth == 10) {
 		return "";
 	}
-	if (path.empty() || path.size() > MAX_PATH_LEN) {
+	if (!ignore_empty_path && path.empty() || path.size() > MAX_PATH_LEN) {
 		return "";
 	}
 
@@ -368,7 +369,7 @@ void add_file_permission(const string &file_name, char mode) {
 	}
 }
 
-void init_conf() {    
+void init_conf() {
 	const runp::config &config = run_program_config;
 	add_file_permission(config.work_path, 'r');
 	add_file_permission(config.work_path + "/", 's');
@@ -386,7 +387,7 @@ void init_conf() {
 	if (config.type != "default") {
 		loads.push_back(config.type);
 	}
-	
+
 	for (string type : loads) {
 		if (allowed_syscall_list.count(type)) {
 			for (const auto &kv : allowed_syscall_list[type]) {
@@ -457,12 +458,12 @@ string read_abspath_from_regs(reg_val_t addr, pid_t pid) {
 	}
 	return a;
 }
-string read_abspath_from_regs(reg_val_t fd, reg_val_t addr, pid_t pid) {
+string read_abspath_from_regs(reg_val_t fd, reg_val_t addr, pid_t pid, bool ignore_empty_path = false) {
 	if (fd > MAX_FD_ID && (int)fd != AT_FDCWD) {
 		return "";
 	}
 	string p = read_string_from_regs(addr, pid);
-	string a = abspath(p, pid, (int)fd);
+	string a = abspath(p, pid, (int)fd, ignore_empty_path);
 	if (run_program_config.need_show_trace_details) {
 		fprintf(stderr, "path     : %s -> %s\n", p.c_str(), a.c_str());
 	}
@@ -623,7 +624,7 @@ bool rp_child_proc::check_safe_syscall() {
 				return false;
 			}
 		}
-		cursc.max_cnt--; 
+		cursc.max_cnt--;
 	}
 
 	if (cursc.extra_check & ECT_KILL_SIG0_ALLOWED) {
@@ -637,7 +638,11 @@ bool rp_child_proc::check_safe_syscall() {
 	if (cursc.extra_check & ECT_FILE_OP) {
 		string fn;
 		if (cursc.extra_check & ECT_END_AT) {
-			fn = read_abspath_from_regs(reg.REG_ARG0, reg.REG_ARG1, pid);
+			if (syscall == SCMP_SYS(newfstatat)) {
+				int flags = (int) reg.REG_ARG3_KERNEL;
+				fn = read_abspath_from_regs(reg.REG_ARG0, reg.REG_ARG1, pid, flags & AT_EMPTY_PATH);
+			} else
+				fn = read_abspath_from_regs(reg.REG_ARG0, reg.REG_ARG1, pid);
 		} else {
 			fn = read_abspath_from_regs(reg.REG_ARG0, pid);
 		}
