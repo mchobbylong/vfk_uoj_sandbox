@@ -192,8 +192,8 @@ void parse_args(int argc, char **argv) {
 	}
 }
 
-void set_limit(int r, uint64_t rcur, uint64_t rmax = -1)  {
-	if (rmax == -1)
+void set_limit(int r, uint64_t rcur, uint64_t rmax = 0)  {
+	if (!rmax)
 		rmax = rcur;
 	struct rlimit l;
 	if (getrlimit(r, &l) == -1) {
