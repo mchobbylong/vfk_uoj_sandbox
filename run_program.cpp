@@ -107,6 +107,7 @@ error_t run_program_argp_parse_opt (int key, char *arg, struct argp_state *state
 			break;
 		case 507:
 			config->use_rss = true;
+			break;
 		case ARGP_KEY_ARG:
 			config->program_name = arg;
 			for (int i = state->next; i < state->argc; i++) {
