@@ -192,7 +192,7 @@ void parse_args(int argc, char **argv) {
 	}
 }
 
-void set_limit(int r, int rcur, int rmax = -1)  {
+void set_limit(int r, uint64_t rcur, uint64_t rmax = -1)  {
 	if (rmax == -1)
 		rmax = rcur;
 	struct rlimit l;
@@ -223,9 +223,10 @@ void set_user_cpu_time_limit(double tl) {
 [[noreturn]] void run_child() {
 	setpgid(0, 0);
 
-	set_limit(RLIMIT_FSIZE, run_program_config.limits.output << 10);
-	set_limit(RLIMIT_STACK, run_program_config.limits.stack << 10);
-	// TODO: use https://man7.org/linux/man-pages/man3/vlimit.3.html to limit virtual memory
+	set_limit(RLIMIT_DATA, (uint64_t) run_program_config.limits.memory << 10);
+	set_limit(RLIMIT_STACK, (uint64_t) run_program_config.limits.stack << 10);
+	set_limit(RLIMIT_AS, (uint64_t) run_program_config.limits.memory << 11);
+	set_limit(RLIMIT_FSIZE, (uint64_t) run_program_config.limits.output << 10);
 
 	if (run_program_config.input_file_name != "stdin") {
 		if (freopen(run_program_config.input_file_name.c_str(), "r", stdin) == NULL) {
