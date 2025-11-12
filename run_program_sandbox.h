@@ -126,7 +126,7 @@ set<string> readable_file_name_set;
 set<string> statable_file_name_set;
 set<string> soft_ban_file_name_set;
 
-syscall_info syscall_info_set[N_SYSCALL];
+map<int, syscall_info> syscall_info_set;
 
 pid_t get_tgid_from_pid(pid_t pid) {
 	ifstream fin("/proc/" + to_string(pid) + "/status");
@@ -483,9 +483,9 @@ bool set_seccomp_bpf() {
 			}
 		}
 
-		for (int i = 0; i < N_SYSCALL; i++) {
-			if (syscall_info_set[i].extra_check == ECT_NONE) {
-				if (syscall_info_set[i].should_soft_ban) {
+		for (auto [i, info] : syscall_info_set) {
+			if (info.extra_check == ECT_NONE) {
+				if (info.should_soft_ban) {
 					if (seccomp_rule_add(ctx, SCMP_ACT_ERRNO(EPERM), i, 0) < 0) {
 						throw system_error();
 					}
@@ -598,7 +598,7 @@ bool rp_child_proc::check_safe_syscall() {
 		return false;
 	}
 
-	if (0 > (long long int)reg.REG_SYSCALL || (long long int)reg.REG_SYSCALL >= N_SYSCALL)  {
+	if (0 > (long long int)reg.REG_SYSCALL || (long long int)reg.REG_SYSCALL > MAX_SYSCALL_NO || syscall_name.find((int)reg.REG_SYSCALL) == syscall_name.end()) {
 		this->set_error_for_suspicious(to_string(reg.REG_SYSCALL));
 		return false;
 	}
