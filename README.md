@@ -42,10 +42,10 @@ for any corresponding short options.
 
 ### Modifications
 
-- Adapt the sandbox for Ubuntu 22.04
-- Changed time measuring unit into millisecond.
-- Changed memory, stack and output file size measuring unit into kilobyte.
-- Altered memory measuring method
+- Adapt for Ubuntu 22.04 LTS
+- Change time measuring unit into millisecond
+- Change memory, stack and output file size measuring unit into kilobyte
+- Alter memory measuring method
   - Measure allocated memory size (num of pages of data/stack) by default
   - Add switch `--use-rss` to measure Resident Set Size (RSS) instead, which is the default for UOJ
 - Dump away error logs from sandboxed program by default
